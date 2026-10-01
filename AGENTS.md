@@ -48,18 +48,25 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 ## План
 1. [x] Hello World на Next.js 16 + React Compiler, деплой на `next.tetiana-redko.com`
 2. [x] Layout + навігація: Головна / Список / Інфо (`layout.tsx`, `<Link>`), тема з Expo
-3. [ ] Firestore у Server Components: `countries`, `coins` (async-компоненти, кешування)
-4. [ ] Головна: випадкова країна → випадкова монета `CoinDetails` (`<Suspense>` + streaming)
-5. [ ] Список: фільтр країни через `searchParams`, `CoinCard`, сторінка `coin/[id]`
+3. [x] Firestore у Server Components: `countries`, `coins` (async-компоненти, кешування)
+4. [x] Головна: випадкова країна → випадкова монета `CoinDetails` (`<Suspense>` + streaming)
+5. [x] Список: фільтр країни через `searchParams`, `CoinCard`, сторінка `coin/[id]`
 6. [ ] Перегляд фото: модалка через parallel + intercepting routes
 7. [ ] AI-кнопки: Server Actions + `useActionState`, список `/providers`, markdown
 8. [ ] Чат з контекстом: `useOptimistic`, `useFormStatus`
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
 
 ## Поточний стан
-Крок 2 — `layout.tsx` = `NavTabs` (sticky зверху) + `<main>`; сторінки `/`, `/list`, `/info` — порожні з заголовком.
-Тема з Expo `theme.ts` → CSS-змінні в `globals.css` (`--card`, `--accent`, `--shadow`, …).
-`metadata.title.template` (`%s · Numismat`) — аналог `options.title` екранів. Наступне — крок 3 (Firestore).
+Кроки 3–5 — дані з Firestore і відображення як в Expo (без AI-секції):
+- `src/lib/data.ts`: `getCountries`, `getCountry`, `getCoinsByCountry`, `getCoin` (`'use cache'` + `cacheLife('minutes')`)
+  замість `CountriesProvider` / `CoinsProvider` + `useEffect`.
+- `/` — `RandomCoin` (`await connection()` → `Math.random` на кожен запит) у `<Suspense>` → `CoinDetails`.
+- `/list?country=ua` — `CountryPicker` (Client: `useOptimistic` + `useTransition` + `router.replace`) + `CoinCard`;
+  без параметра — випадкова країна.
+- `/coin/[id]` — `getCoin` (`getDoc` за id, а не пошук у всіх монетах) + `notFound()`, `generateMetadata` → назва монети.
+- `CoinDetails` / `CoinCard` — Server Components, іконки Ionicons з `react-icons/io5`, фото — `next/image`.
+- `error.tsx` — межа помилок (аналог `error`-тексту в Expo), `retry()` з Next 16.2.
+Фото поки не клікабельні (крок 6). Наступне — крок 6 (модалка фото).
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
@@ -76,3 +83,14 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
   Expo `(tabs)/_layout.tsx` (`<Tabs>`) ↔ Next `app/layout.tsx` (довільний JSX, навігація — звичайні `<Link>`).
 - React Compiler у збірці: `NavTabs` → `const $ = c(4)` (кеш на 4 слоти з `react/compiler-runtime`),
   `tabs.map(...)` перераховується лише при `$[0] !== pathname`, `<nav>` — лише при зміні масиву лінків.
+- Firebase: `firebase/firestore/lite` (REST, без realtime — для одноразових читань на сервері). Ключі — `.env.local`
+  без `NEXT_PUBLIC_` (`FIREBASE_*`) → лише сервер, у браузер не потрапляють. На сервері `.env.local` створити вручну.
+- `cacheComponents: true` (Next 16): кеш лише явний (`'use cache'`), збірка вимагає `<Suspense>` навколо
+  runtime-даних (`searchParams`, `params`, `connection()`). Маршрути `/`, `/list`, `/coin/[id]` — `◐ Partial Prerender`:
+  статична оболонка (nav + fallback) одразу, дані — streaming.
+  `usePathname()` у layout на динамічному маршруті теж runtime → `NavTabs` = `<Suspense fallback={<Tabs />}>` + `ActiveTabs`.
+- `useOptimistic` у фільтрі: контрольований `<select>` одразу показує нову країну, поки transition з навігацією
+  ще триває (без нього значення відкотилося б до старого до приходу нової сторінки); `isPending` → `opacity`.
+- `notFound()` всередині `<Suspense>` після стріму оболонки → HTTP 200 + сторінка 404 з `noindex` (статус уже відправлено).
+- `next/image`: `remotePatterns: [new URL(...)]` вимагає порожній query → URL Storage (`?alt=media&token=`) → 400.
+  Рішення — об'єкт `{ protocol, hostname, pathname: '/v0/b/tetiana-redko.appspot.com/**' }` без `search`.

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import styles from "./nav-tabs.module.css";
 
 const tabs = [
@@ -11,8 +12,18 @@ const tabs = [
 ];
 
 export function NavTabs() {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<Tabs />}>
+      <ActiveTabs />
+    </Suspense>
+  );
+}
 
+function ActiveTabs() {
+  return <Tabs pathname={usePathname()} />;
+}
+
+function Tabs({ pathname }: { pathname?: string }) {
   return (
     <nav className={styles.nav}>
       {tabs.map((tab) => (
