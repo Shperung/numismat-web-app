@@ -1,9 +1,9 @@
-import Image from "next/image";
 import type { IconType } from "react-icons";
 import { IoCalendarOutline, IoCashOutline, IoDocumentTextOutline, IoSparklesOutline } from "react-icons/io5";
 import { getCountry } from "@/lib/data";
 import { getProviders } from "@/lib/numismat-server";
 import { AiAccordion } from "./ai-accordion";
+import { PhotoZoom } from "./photo-zoom";
 import type { Coin } from "@/types/coin";
 import styles from "./coin-details.module.css";
 
@@ -22,7 +22,7 @@ export async function CoinDetails({ coin }: { coin: Coin }) {
           {sides.map(({ key, label }) => (
             <figure key={key} className={styles.side}>
               {coin[key] ? (
-                <Image src={coin[key]} alt={label} width={130} height={130} className={styles.photo} />
+                <PhotoZoom src={coin[key]} alt={label} />
               ) : (
                 <div className={styles.photo} />
               )}

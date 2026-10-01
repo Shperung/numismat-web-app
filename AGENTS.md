@@ -51,7 +51,7 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 3. [x] Firestore у Server Components: `countries`, `coins` (async-компоненти, кешування)
 4. [x] Головна: випадкова країна → випадкова монета `CoinDetails` (`<Suspense>` + streaming)
 5. [x] Список: фільтр країни через `searchParams`, `CoinCard`, сторінка `coin/[id]`
-6. [ ] Перегляд фото: модалка через parallel + intercepting routes
+6. [x] Перегляд фото: модалка `<dialog>` + pinch zoom на тачі
 7. [x] AI-кнопки: Server Actions + `useActionState`, список `/providers`, markdown
 8. [ ] Чат з контекстом: `useOptimistic`, `useFormStatus`
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
@@ -70,7 +70,10 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 відкритих одночасно, відповідь зберігається; `<datalist>` — це підказки для `<input>`, не акордеон).
 Gemini (`src/lib/ai.ts`, Firebase AI Logic — тепер на сервері) + моделі з `GET /providers` (`getProviders`, `'use cache'`).
 Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown рендериться на сервері (`react-markdown`).
-Помилка → кнопка «Спробувати ще» в панелі. Фото поки не клікабельні. Наступне — крок 6 (модалка фото) або 8 (чат).
+Помилка → кнопка «Спробувати ще» в панелі.
+Крок 6 — `PhotoZoom` (`src/components/photo-zoom.tsx`): мініатюра з бейджем → нативний `<dialog>` (`showModal()`) на весь екран,
+чорний фон, кнопка закриття, `Esc`. Тач: pinch 1–5× + pan (коли збільшено) + подвійний тап (скидання);
+мишка: просто велике зображення, клік будь-де закриває. Наступне — крок 8 (чат з контекстом).
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
@@ -107,4 +110,11 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
   (`attempt + 1` → `<Suspense key={attempt}>`, щоб при повторі знову показати спінер, а не стару помилку).
   Виклик поза формою — лише всередині `startTransition(ask)`.
 - Логотипи провайдерів — `next/image` з `unoptimized` (довільні домени без `remotePatterns`), Gemini — `public/ai/gemini.png`.
+- Фото-модалка: `<dialog>` замість intercepting routes — без URL, зате фокус, `Esc`, top layer з коробки.
+  Жести — Pointer Events (аналог `Gesture.Pinch/Pan/Tap` з gesture-handler), лише `pointerType === "touch"` →
+  на десктопі жестів немає. `touch-action: none` на обгортці, щоб браузер не зумив усю сторінку.
+  Трансформація пишеться прямо в `style` через ref (без `setState` на кожен move — аналог worklet / shared value).
+  `setPointerCapture` не потрібен: touch має implicit capture (і він кидає помилку на синтетичних подіях).
+  Пастка: два пальці після pinch відпускаються майже разом → хибний «подвійний тап» → прапорець `multiTouch`.
+  Перевірено синтетичними `PointerEvent` (pinch → `scale(3)`, pan, подвійний тап → `scale(1)`, мишка ігнорується).
 - Gemini через `firebase/ai` працює і в Node (на сервері Next). App Check з 2 листопада 2026 — див. Expo AGENTS.md.

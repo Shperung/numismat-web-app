@@ -1,0 +1,68 @@
+.thumb {
+  position: relative;
+  display: flex;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: zoom-in;
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.15);
+}
+
+.thumbImage {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: var(--border);
+  object-fit: cover;
+}
+
+.badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  padding: 5px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+}
+
+.dialog {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.dialog::backdrop {
+  background: transparent;
+}
+
+.image {
+  position: absolute;
+  inset: 5vh 5vw;
+  touch-action: none;
+}
+
+.full {
+  object-fit: contain;
+}
+
+.close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  padding: 6px;
+  border: none;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  cursor: pointer;
+}
