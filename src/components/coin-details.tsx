@@ -1,7 +1,9 @@
 import Image from "next/image";
 import type { IconType } from "react-icons";
-import { IoCalendarOutline, IoCashOutline, IoDocumentTextOutline } from "react-icons/io5";
+import { IoCalendarOutline, IoCashOutline, IoDocumentTextOutline, IoSparklesOutline } from "react-icons/io5";
 import { getCountry } from "@/lib/data";
+import { getProviders } from "@/lib/numismat-server";
+import { AiAccordion } from "./ai-accordion";
 import type { Coin } from "@/types/coin";
 import styles from "./coin-details.module.css";
 
@@ -45,6 +47,29 @@ export async function CoinDetails({ coin }: { coin: Coin }) {
           </h2>
           <p className={styles.body}>{coin.info}</p>
         </section>
+      )}
+
+      <h2 className={styles.sectionTitle}>
+        <IoSparklesOutline size={18} color="var(--accent)" />
+        Цікаві факти від AI
+      </h2>
+      <AiButtons coinId={coin.id} />
+    </div>
+  );
+}
+
+async function AiButtons({ coinId }: { coinId: string }) {
+  const providers = await getProviders().catch((e) => String(e));
+
+  return (
+    <div className={styles.aiButtons}>
+      <AiAccordion provider="gemini" title="Запитати в Gemini про монету" logo="/ai/gemini.png" coinId={coinId} />
+      {typeof providers === "string" ? (
+        <p className={styles.error}>Помилка завантаження моделей: {providers}</p>
+      ) : (
+        providers.map((p) => (
+          <AiAccordion key={p.id} provider={p.id} title={`Запитати в ${p.title} про монету`} logo={p.logo} coinId={coinId} />
+        ))
       )}
     </div>
   );

@@ -52,7 +52,7 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 4. [x] Головна: випадкова країна → випадкова монета `CoinDetails` (`<Suspense>` + streaming)
 5. [x] Список: фільтр країни через `searchParams`, `CoinCard`, сторінка `coin/[id]`
 6. [ ] Перегляд фото: модалка через parallel + intercepting routes
-7. [ ] AI-кнопки: Server Actions + `useActionState`, список `/providers`, markdown
+7. [x] AI-кнопки: Server Actions + `useActionState`, список `/providers`, markdown
 8. [ ] Чат з контекстом: `useOptimistic`, `useFormStatus`
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
 
@@ -66,7 +66,11 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 - `/coin/[id]` — `getCoin` (`getDoc` за id, а не пошук у всіх монетах) + `notFound()`, `generateMetadata` → назва монети.
 - `CoinDetails` / `CoinCard` — Server Components, іконки Ionicons з `react-icons/io5`, фото — `next/image`.
 - `error.tsx` — межа помилок (аналог `error`-тексту в Expo), `retry()` з Next 16.2.
-Фото поки не клікабельні (крок 6). Наступне — крок 6 (модалка фото).
+Крок 7 — AI-секція в `CoinDetails`: `AiAccordion` на `<details>` / `<summary>` (нативний акордеон, кілька
+відкритих одночасно, відповідь зберігається; `<datalist>` — це підказки для `<input>`, не акордеон).
+Gemini (`src/lib/ai.ts`, Firebase AI Logic — тепер на сервері) + моделі з `GET /providers` (`getProviders`, `'use cache'`).
+Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown рендериться на сервері (`react-markdown`).
+Помилка → кнопка «Спробувати ще» в панелі. Фото поки не клікабельні. Наступне — крок 6 (модалка фото) або 8 (чат).
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
@@ -94,3 +98,13 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 - `notFound()` всередині `<Suspense>` після стріму оболонки → HTTP 200 + сторінка 404 з `noindex` (статус уже відправлено).
 - `next/image`: `remotePatterns: [new URL(...)]` вимагає порожній query → URL Storage (`?alt=media&token=`) → 400.
   Рішення — об'єкт `{ protocol, hostname, pathname: '/v0/b/tetiana-redko.appspot.com/**' }` без `search`.
+- Server Actions у Next виконуються на клієнті ПО ЧЕРЗІ (`02-guides/server-actions.md` → «Sequential dispatch»).
+  Обхід для паралельних AI-запитів: action одразу повертає `{ attempt, result: Promise<AiResult> }` (не чекає AI),
+  promise стрімиться окремо (RSC серіалізує Promise), клієнт читає `use(state.result)` у `<Suspense>`.
+  Черга звільняється миттєво → 4 акордеони разом: 2.3–3.5 с, відповіді в довільному порядку (послідовно було б ~11 с).
+- Action повертає JSX (`<Markdown>{text}</Markdown>`) → markdown-бібліотека лишається на сервері, у браузер іде готове дерево.
+- `useActionState(askAi.bind(null, provider, coinId), null)`: bound-аргументи першими, далі `prevState`
+  (`attempt + 1` → `<Suspense key={attempt}>`, щоб при повторі знову показати спінер, а не стару помилку).
+  Виклик поза формою — лише всередині `startTransition(ask)`.
+- Логотипи провайдерів — `next/image` з `unoptimized` (довільні домени без `remotePatterns`), Gemini — `public/ai/gemini.png`.
+- Gemini через `firebase/ai` працює і в Node (на сервері Next). App Check з 2 листопада 2026 — див. Expo AGENTS.md.
