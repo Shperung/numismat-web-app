@@ -46,8 +46,8 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 - Оновлення: `cd /var/www/numismat-web-app && git pull && npm ci && npm run build && pm2 restart numismat-web`.
 
 ## План
-1. [ ] Hello World на Next.js 16 + React Compiler, деплой на `next.tetiana-redko.com`
-2. [ ] Layout + навігація: Головна / Список / Інфо (`layout.tsx`, `<Link>`), тема з Expo
+1. [x] Hello World на Next.js 16 + React Compiler, деплой на `next.tetiana-redko.com`
+2. [x] Layout + навігація: Головна / Список / Інфо (`layout.tsx`, `<Link>`), тема з Expo
 3. [ ] Firestore у Server Components: `countries`, `coins` (async-компоненти, кешування)
 4. [ ] Головна: випадкова країна → випадкова монета `CoinDetails` (`<Suspense>` + streaming)
 5. [ ] Список: фільтр країни через `searchParams`, `CoinCard`, сторінка `coin/[id]`
@@ -57,10 +57,22 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
 
 ## Поточний стан
-Крок 1 — каркас з `create-next-app@16.3.8` (`--react-compiler --src-dir --no-tailwind`), Hello World.
-Локально `lint`, `tsc`, `build` проходять. Наступне — деплой на сервер.
+Крок 2 — `layout.tsx` = `NavTabs` (sticky зверху) + `<main>`; сторінки `/`, `/list`, `/info` — порожні з заголовком.
+Тема з Expo `theme.ts` → CSS-змінні в `globals.css` (`--card`, `--accent`, `--shadow`, …).
+`metadata.title.template` (`%s · Numismat`) — аналог `options.title` екранів. Наступне — крок 3 (Firestore).
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
 - Next 16 вендорить власну збірку React для App Router; `react` у `package.json` — 19.2.8.
 - Видалено шаблонні `README.md`, `page.module.css`, `public/*.svg`, шрифти Geist.
+- Деплой: на сервері немає SSH-ключа GitHub → `git clone https://...` (репо публічне).
+  Бекап nginx перед змінами: `tar -czf /root/nginx-$(date +%F-%H%M).tar.gz -C /etc nginx`.
+  Конфіг nginx записано через `cat > ... <<'EOF'` (без `nano` → без `*.save`).
+- Пастка pm2: `pm2 start ... --name X` при наявному процесі X не створює новий, а перезапускає старий
+  у його старому `exec cwd` (тут був старий `inua-client` з `/root/tetiana-redko/`) → `pm2 delete X` + `start`.
+  Перевірка: `pm2 describe X | grep "exec cwd"`.
+- Навігація: `src/components/nav-tabs.tsx` — єдиний Client Component (`"use client"`, бо `usePathname`);
+  layout і сторінки — Server Components. Активний таб — CSS Modules `composes: tab`.
+  Expo `(tabs)/_layout.tsx` (`<Tabs>`) ↔ Next `app/layout.tsx` (довільний JSX, навігація — звичайні `<Link>`).
+- React Compiler у збірці: `NavTabs` → `const $ = c(4)` (кеш на 4 слоти з `react/compiler-runtime`),
+  `tabs.map(...)` перераховується лише при `$[0] !== pathname`, `<nav>` — лише при зміні масиву лінків.
