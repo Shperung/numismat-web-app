@@ -59,8 +59,8 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 7. [x] AI-кнопки: Server Actions + `useActionState`, список `/providers`, markdown
 8. [ ] Чат з контекстом: `useOptimistic`, `useFormStatus`
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
-10. [x] Адмінка: вхід (Firebase Auth email/пароль) + форма монети з фото аверсу/реверсу (код)
- 10.1 [ ] Console: Email/Password, адмін-користувач, правила Firestore/Storage (запис лише для `uid` адміна)
+10. [x] Адмінка: вхід (Firebase Auth email/пароль) + форма монети з фото аверсу/реверсу + форма країни (код)
+ 10.1 [ ] Console: Email/Password, адмін-користувач, правила Firestore (`coins`, `countries`) / Storage (запис лише для `uid` адміна)
  10.2 [ ] nginx `client_max_body_size 20m;` + деплой, перевірка додавання на проді
  10.3 [ ] Пізніше: редагування / видалення, стиснення фото перед завантаженням
 
@@ -88,6 +88,8 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
 (`securetoken`), паралельно вантажить 2 фото в Storage (`coins/{country}/{value}-{currency}-{year}-{ts}-avers.jpg`),
 створює документ у `coins` (Firestore REST) → `updateTag("coins")` → `redirect('/coin/{id}')`.
 Права на запис перевіряють Security Rules (запит іде з `idToken` адміна), а не Next.
+`CountryForm` (на `/admin` під монетою): код → id документа (`?documentId=ua`, повтор → `ALREADY_EXISTS`),
+`name_ua`, `name_en`, `flag` → `updateTag("countries")` → нова країна одразу в `<select>` форми монети.
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
@@ -139,4 +141,5 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
  ліміт (1m за замовчуванням) → `client_max_body_size 20m;`, інакше 413.
 - `<form action={fn}>` після завершення action скидає поля (і вибрані файли) навіть при помилці → `onSubmit` +
  `startTransition(() => action(formData))`. Превʼю фото — `URL.createObjectURL`.
+ Очистити форму лише після успіху — `<form key={state?.success}>` (новий key → ремаунт із порожніми полями).
 - `redirect()` всередині `<Suspense>` (як і `notFound()`): HTTP 200, редірект виконує клієнт (`NEXT_REDIRECT` у потоці).

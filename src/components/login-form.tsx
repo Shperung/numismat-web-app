@@ -18,7 +18,7 @@ export function LoginForm() {
         Пароль
         <input name="password" type="password" required autoComplete="current-password" className={styles.input} />
       </label>
-      {state && <p className={styles.error}>{state.error}</p>}
+      {state?.error && <p className={styles.error}>{state.error}</p>}
       <button disabled={pending} className={styles.button}>
         {pending ? "Вхід..." : "Увійти"}
       </button>

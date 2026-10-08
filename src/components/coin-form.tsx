@@ -58,7 +58,7 @@ export function CoinForm({ countries }: { countries: Country[] }) {
         <textarea name="info" rows={4} className={styles.input} />
       </label>
 
-      {state && <p className={styles.error}>{state.error}</p>}
+      {state?.error && <p className={styles.error}>{state.error}</p>}
       <button disabled={pending} className={styles.button}>
         {pending ? "Збереження..." : "Додати монету"}
       </button>

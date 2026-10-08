@@ -7,6 +7,7 @@ import { db } from "./firebase";
 export async function getCountries() {
   "use cache";
   cacheLife("minutes");
+  cacheTag("countries");
   const snapshot = await getDocs(collection(db, "countries"));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Country);
 }

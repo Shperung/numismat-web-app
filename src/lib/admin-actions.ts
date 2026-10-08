@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { addDocument, getIdToken, requireSession, SESSION_COOKIE, signIn, uploadPhoto } from "./admin";
 
-export type FormState = { error: string } | null;
+export type FormState = { error?: string; success?: string } | null;
 
 const WRONG_CREDENTIALS = ["INVALID_LOGIN_CREDENTIALS", "EMAIL_NOT_FOUND", "INVALID_PASSWORD", "INVALID_EMAIL"];
 
@@ -74,6 +74,29 @@ export async function addCoin(_prev: FormState, formData: FormData): Promise<For
 
   updateTag("coins");
   redirect(`/coin/${id}`);
+}
+
+export async function addCountry(_prev: FormState, formData: FormData): Promise<FormState> {
+  const session = await requireSession();
+  const text = (key: string) => String(formData.get(key) ?? "").trim();
+  const id = text("id").toLowerCase();
+  const name_ua = text("name_ua");
+  const name_en = text("name_en");
+  const flag = text("flag");
+
+  if (!/^[a-z]{2,3}$/.test(id) || !name_ua || !name_en || !flag) {
+    return { error: "Заповніть код (2–3 латинські літери), назви та прапор" };
+  }
+
+  try {
+    await addDocument(await getIdToken(session), "countries", { name_ua, name_en, flag }, id);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { error: message.startsWith("Document already exists") ? `Країна «${id}» вже існує` : message };
+  }
+
+  updateTag("countries");
+  return { success: `Додано ${flag} ${name_ua}` };
 }
 
 function extension(file: File) {

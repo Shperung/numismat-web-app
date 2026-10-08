@@ -104,3 +104,7 @@
 .error {
   color: var(--error);
 }
+
+.success {
+  color: #2e7d32;
+}

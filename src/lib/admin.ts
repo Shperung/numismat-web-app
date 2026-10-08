@@ -55,14 +55,20 @@ export async function uploadPhoto(idToken: string, path: string, file: File) {
   return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path)}?alt=media&token=${data.downloadTokens}`;
 }
 
-export async function addDocument(idToken: string, collection: string, values: Record<string, string | number>) {
+export async function addDocument(
+  idToken: string,
+  collection: string,
+  values: Record<string, string | number>,
+  id?: string,
+) {
   const fields = Object.fromEntries(
     Object.entries(values).map(([key, v]) => [
       key,
       typeof v === "string" ? { stringValue: v } : Number.isInteger(v) ? { integerValue: v } : { doubleValue: v },
     ]),
   );
-  const data = await request<{ name: string }>(`${DOCUMENTS}/${collection}`, {
+  const query = id ? `?documentId=${encodeURIComponent(id)}` : "";
+  const data = await request<{ name: string }>(`${DOCUMENTS}/${collection}${query}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ fields }),

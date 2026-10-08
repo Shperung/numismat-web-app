@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CoinForm } from "@/components/coin-form";
+import { CountryForm } from "@/components/country-form";
 import styles from "@/components/admin-form.module.css";
 import { requireSession } from "@/lib/admin";
 import { logout } from "@/lib/admin-actions";
@@ -25,6 +26,7 @@ async function Admin() {
         <button className={styles.link}>Вийти</button>
       </form>
       <CoinForm countries={countries} />
+      <CountryForm />
     </div>
   );
 }
