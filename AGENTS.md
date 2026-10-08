@@ -42,8 +42,12 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 - pm2: процес `numismat-web`, `next start -H 127.0.0.1 -p 3002` (зайняті: 3000 — numismat-server, 3001, 777, 8082).
 - nginx: `sites-available/next.tetiana-redko.com`, сертифікат через `certbot certonly --nginx -d next.tetiana-redko.com`
   + 443-блок вручну (див. «Пастки nginx / certbot» у `numismat-server/AGENTS.md`).
+  У `location /` обов'язково `proxy_buffering off;` — інакше nginx буферизує стрім: немає streaming сторінок
+  (PPR-оболонка і дані приходять разом) і спінера AI (відповідь action з Promise приходить одним шматком).
 - pm2 `tetiana-redko.com` (id 0) — НЕ ЧІПАТИ, команди лише за іменем.
 - Оновлення: `cd /var/www/numismat-web-app && git pull && npm ci && npm run build && pm2 restart numismat-web`.
+- Секрети: `.env.local` не в git → копіювати вручну: `scp .env.local root@116.203.220.233:/var/www/numismat-web-app/`
+  + `pm2 restart numismat-web`. Без нього на проді — React error #441 (помилка Server Component, текст лише в `pm2 logs`).
 
 ## План
 1. [x] Hello World на Next.js 16 + React Compiler, деплой на `next.tetiana-redko.com`
@@ -55,6 +59,10 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 7. [x] AI-кнопки: Server Actions + `useActionState`, список `/providers`, markdown
 8. [ ] Чат з контекстом: `useOptimistic`, `useFormStatus`
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
+10. [x] Адмінка: вхід (Firebase Auth email/пароль) + форма монети з фото аверсу/реверсу (код)
+ 10.1 [ ] Console: Email/Password, адмін-користувач, правила Firestore/Storage (запис лише для `uid` адміна)
+ 10.2 [ ] nginx `client_max_body_size 20m;` + деплой, перевірка додавання на проді
+ 10.3 [ ] Пізніше: редагування / видалення, стиснення фото перед завантаженням
 
 ## Поточний стан
 Кроки 3–5 — дані з Firestore і відображення як в Expo (без AI-секції):
@@ -74,6 +82,12 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
 Крок 6 — `PhotoZoom` (`src/components/photo-zoom.tsx`): мініатюра з бейджем → нативний `<dialog>` (`showModal()`) на весь екран,
 чорний фон, кнопка закриття, `Esc`. Тач: pinch 1–5× + pan (коли збільшено) + подвійний тап (скидання);
 мишка: просто велике зображення, клік будь-де закриває. Наступне — крок 8 (чат з контекстом).
+Крок 10 — адмінка (посилання з «Інфо»): `/admin/login` (`LoginForm`, `useActionState(login)`) і `/admin`
+(`requireSession()` у `<Suspense>` → `CoinForm` + «Вийти»). `src/lib/admin.ts` — REST Firebase без SDK:
+`signInWithPassword` → `refreshToken` у httpOnly-cookie `admin_session` (30 днів); `addCoin` обмінює його на `idToken`
+(`securetoken`), паралельно вантажить 2 фото в Storage (`coins/{country}/{value}-{currency}-{year}-{ts}-avers.jpg`),
+створює документ у `coins` (Firestore REST) → `updateTag("coins")` → `redirect('/coin/{id}')`.
+Права на запис перевіряють Security Rules (запит іде з `idToken` адміна), а не Next.
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
@@ -118,3 +132,11 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
   Пастка: два пальці після pinch відпускаються майже разом → хибний «подвійний тап» → прапорець `multiTouch`.
   Перевірено синтетичними `PointerEvent` (pinch → `scale(3)`, pan, подвійний тап → `scale(1)`, мишка ігнорується).
 - Gemini через `firebase/ai` працює і в Node (на сервері Next). App Check з 2 листопада 2026 — див. Expo AGENTS.md.
+- Адмінка: `firebase/auth` на сервері тримав би одного глобального `currentUser` на всі запити → замість SDK REST
+ (`identitytoolkit` / `securetoken` / Storage `o?name=` / Firestore `documents/coins`) з токеном конкретного запиту.
+ Числа в Firestore REST: `integerValue` / `doubleValue` (у старих монетах `year`/`value` бувають `stringValue`).
+- Server Action за замовчуванням приймає ≤1MB → `experimental.serverActions.bodySizeLimit: '20mb'`; nginx має свій
+ ліміт (1m за замовчуванням) → `client_max_body_size 20m;`, інакше 413.
+- `<form action={fn}>` після завершення action скидає поля (і вибрані файли) навіть при помилці → `onSubmit` +
+ `startTransition(() => action(formData))`. Превʼю фото — `URL.createObjectURL`.
+- `redirect()` всередині `<Suspense>` (як і `notFound()`): HTTP 200, редірект виконує клієнт (`NEXT_REDIRECT` у потоці).
