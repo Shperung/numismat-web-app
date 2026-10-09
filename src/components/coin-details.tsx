@@ -1,5 +1,8 @@
+import Link from "next/link";
+import { Suspense } from "react";
 import type { IconType } from "react-icons";
-import { IoCalendarOutline, IoCashOutline, IoDocumentTextOutline, IoSparklesOutline } from "react-icons/io5";
+import { IoCalendarOutline, IoCashOutline, IoDocumentTextOutline, IoPencil, IoSparklesOutline } from "react-icons/io5";
+import { hasSession } from "@/lib/admin";
 import { getCountry } from "@/lib/data";
 import { getProviders } from "@/lib/numismat-server";
 import { AiAccordion } from "./ai-accordion";
@@ -18,6 +21,9 @@ export async function CoinDetails({ coin }: { coin: Coin }) {
   return (
     <div className={styles.container}>
       <section className={`card ${styles.hero}`}>
+        <Suspense>
+          <EditLink coinId={coin.id} />
+        </Suspense>
         <div className={styles.photos}>
           {sides.map(({ key, label }) => (
             <figure key={key} className={styles.side}>
@@ -55,6 +61,16 @@ export async function CoinDetails({ coin }: { coin: Coin }) {
       </h2>
       <AiButtons coinId={coin.id} />
     </div>
+  );
+}
+
+async function EditLink({ coinId }: { coinId: string }) {
+  if (!(await hasSession())) return null;
+  return (
+    <Link href={`/admin/edit/${coinId}`} className={styles.edit}>
+      <IoPencil size={14} />
+      Редагувати
+    </Link>
   );
 }
 
