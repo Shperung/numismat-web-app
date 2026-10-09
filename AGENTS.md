@@ -39,7 +39,10 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 ## Деплой
 - Hetzner `116.203.220.233`, DNS `next` → цей IP (вже є).
 - Код: `/var/www/numismat-web-app` (`git clone` з GitHub `Shperung/numismat-web-app`).
-- pm2: процес `numismat-web`, `next start -H 127.0.0.1 -p 3002` (зайняті: 3000 — numismat-server, 3001, 777, 8082).
+- Node 24 (глобально, NodeSource `/usr/bin/node`; до 09.10.2026 був 20.9 — `sharp` на ньому не працює).
+- pm2: процес `numismat-web` (зайняті: 3000 — numismat-server, 3001, 777, 8082), створено з явним інтерпретатором:
+  `pm2 start node_modules/next/dist/bin/next --name numismat-web --interpreter /usr/bin/node -- start -H 127.0.0.1 -p 3002`
+  + `pm2 save`. Перевірка: `/proc/$(pm2 pid numismat-web)/exe -v` → v24.
 - nginx: `sites-available/next.tetiana-redko.com`, сертифікат через `certbot certonly --nginx -d next.tetiana-redko.com`
   + 443-блок вручну (див. «Пастки nginx / certbot» у `numismat-server/AGENTS.md`).
   У `location /` обов'язково `proxy_buffering off;` — інакше nginx буферизує стрім: немає streaming сторінок
@@ -62,7 +65,7 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
 10. [x] Адмінка: вхід (Firebase Auth email/пароль) + форма монети з фото аверсу/реверсу + форма країни + заповнення з фото через Gemini (перевірено локально)
  10.1 [x] Console: Email/Password, адмін-користувач, правила Firestore (`coins`, `countries`) / Storage (запис лише для `uid` адміна)
- 10.2 [ ] nginx `client_max_body_size 20m;` + деплой, перевірка додавання на проді
+ 10.2 [x] Node 24 на сервері + nginx `client_max_body_size 20m;` + деплой, вхід на проді працює
  10.3 [x] Редагування: `/admin/edit` (фільтр як у списку) → `/admin/edit/[id]` (та сама форма)
  10.4 [x] «✨ Покращити» біля кожного фото: Gemini знаходить монету, `sharp` прибирає фон (білий) і центрує в 1:1
  10.5 [ ] Пізніше: видалення, прибирання старих фото зі Storage при заміні
@@ -111,7 +114,7 @@ Gemini при редагуванні активний одразу: `describeCoi
 у рамку (овал від ракурсу лишається овалом) + білий фон → `contain` у 940×940 → поля до 1024×1024 JPEG.
 Клієнт: data URL → `File` → `input.files = DataTransfer.files` (FormData і превʼю беруть покращене), «↩ Оригінал».
 При редагуванні без нового файлу сервер бере збережене фото за `coinId` (як `describeCoin`).
-Адмінка працює локально (вхід, монета з фото, країна, Gemini). Наступне — крок 10.2 (nginx + деплой), далі крок 8.
+Адмінка задеплоєна на прод (Node 24), вхід працює. Наступне — крок 8 (чат з контекстом) або 10.5.
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
@@ -191,6 +194,13 @@ Gemini при редагуванні активний одразу: `describeCoi
  Лишилось обмеження: маска-еліпс вісь-орієнтована → овал, нахилений у кадрі, обрізається неточно по краю.
 - Gemini буває дуже повільним (2–3 хв на фото) і віддає 503; тайм-аут `firebase/ai` за замовчуванням 180 с
  (`getGenerativeModel(ai, params, { timeout })`) — свій 60 с обірвав би й успішні відповіді, тому не ставили.
+- Прод на Node 20.9: `sharp` (ESM) має `import … with { type: "json" }` (Node ≥ 20.10) → збірка/рантайм
+ `Unexpected token 'with'`, хоча `engines` у sharp і next — `>=20.9.0` (npm не попереджає). Оновлення до Node 24:
+ 1) `setup_24.x` + `apt-get install nodejs`, але `node -v` лишався 20.9 — старий бінарник у `/usr/local/bin` перекривав
+ `/usr/bin` у PATH → перейменувати старий + `hash -r`; 2) демон pm2 стартував на старому Node і запускає ним
+ процеси навіть після `restart` → `pm2 delete` + `start --interpreter /usr/bin/node`. `pm2 update` не використовувати —
+ перезапускає всі процеси, зокрема `tetiana-redko.com` (id 0). `numismat-server` поки на 20.9 (працює).
+- Логи прод: `Server Reference ID … Received "x"` — сканери з фейковим `Next-Action`, ігнорувати.
 - Сервер Next без EXIF-нормалізації: Gemini і `sharp.extract` мають бачити однакові пікселі → спершу `.rotate()`
  (EXIF) + resize до 2048, і цей самий буфер — і в Gemini, і в обрізку.
 - `redirect()` всередині `<Suspense>` (як і `notFound()`): HTTP 200, редірект виконує клієнт (`NEXT_REDIRECT` у потоці).
