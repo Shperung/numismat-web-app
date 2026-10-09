@@ -1,7 +1,7 @@
 "use client";
 
-import { Fragment, startTransition, useActionState, useState } from "react";
-import { type DescribeState, saveCoin } from "@/lib/admin-actions";
+import { Fragment, startTransition, useActionState, useRef, useState, useTransition } from "react";
+import { type DescribeState, enhancePhoto, saveCoin } from "@/lib/admin-actions";
 import type { Coin } from "@/types/coin";
 import type { Country } from "@/types/country";
 import styles from "./admin-form.module.css";
@@ -39,6 +39,7 @@ export function CoinForm({ countries, editing, newCountry, described, describe, 
             name={name}
             label={name === "avers" ? "Аверс" : "Реверс"}
             initial={editing?.[name]}
+            coinId={editing?.id}
             onSelect={(selected) => setPhotos((p) => ({ ...p, [name]: selected }))}
           />
         ))}
@@ -129,33 +130,92 @@ export function CoinForm({ countries, editing, newCountry, described, describe, 
   );
 }
 
-type PhotoInputProps = { name: string; label: string; initial?: string; onSelect: (selected: boolean) => void };
+type PhotoInputProps = {
+  name: "avers" | "revers";
+  label: string;
+  initial?: string;
+  coinId?: string;
+  onSelect: (selected: boolean) => void;
+};
 
-function PhotoInput({ name, label, initial, onSelect }: PhotoInputProps) {
+function PhotoInput({ name, label, initial, coinId, onSelect }: PhotoInputProps) {
+  const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState(initial);
+  // не undefined → показано покращене фото, а тут те, що було до покращення (file: undefined — збережене фото)
+  const [original, setOriginal] = useState<{ file?: File }>();
+  const [error, setError] = useState<string>();
+  const [enhancing, startEnhancing] = useTransition();
+
+  function show(file?: File) {
+    if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
+    setPreview(file ? URL.createObjectURL(file) : initial);
+    onSelect(!!file);
+  }
+
+  function put(file?: File) {
+    const transfer = new DataTransfer();
+    if (file) transfer.items.add(file);
+    input.current!.files = transfer.files;
+    show(file);
+  }
+
+  function enhance() {
+    const current = input.current!.files?.[0];
+    const formData = new FormData();
+    if (current) formData.set("photo", current);
+    setError(undefined);
+    startEnhancing(async () => {
+      const result = await enhancePhoto(coinId ?? null, name, formData);
+      if (!result.image) {
+        setError(result.error);
+        return;
+      }
+      const blob = await (await fetch(result.image)).blob();
+      setOriginal((o) => o ?? { file: current });
+      put(new File([blob], `${name}.jpg`, { type: "image/jpeg" }));
+    });
+  }
 
   return (
-    <label className={styles.photo}>
-      <span
-        className={styles.preview}
-        style={preview ? { backgroundImage: `url(${preview})` } : undefined}
-      >
-        {!preview && "+"}
-      </span>
-      {label}
-      <input
-        name={name}
-        type="file"
-        accept="image/*"
-        required={!initial}
-        className={styles.fileInput}
-        onChange={(e) => {
-          if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
-          const file = e.target.files?.[0];
-          setPreview(file ? URL.createObjectURL(file) : initial);
-          onSelect(!!file);
-        }}
-      />
-    </label>
+    <div className={styles.photoSlot}>
+      <label className={styles.photo}>
+        <span
+          className={enhancing ? `${styles.preview} ${styles.busy}` : styles.preview}
+          style={preview ? { backgroundImage: `url(${preview})` } : undefined}
+        >
+          {!preview && "+"}
+        </span>
+        {label}
+        <input
+          ref={input}
+          name={name}
+          type="file"
+          accept="image/*"
+          required={!initial}
+          className={styles.fileInput}
+          onChange={(e) => {
+            setOriginal(undefined);
+            setError(undefined);
+            show(e.target.files?.[0]);
+          }}
+        />
+      </label>
+      <button type="button" disabled={!preview || enhancing} className={styles.small} onClick={enhance}>
+        {enhancing ? "Обробка..." : "✨ Покращити"}
+      </button>
+      {original && !enhancing && (
+        <button
+          type="button"
+          className={styles.link}
+          onClick={() => {
+            put(original.file);
+            setOriginal(undefined);
+          }}
+        >
+          ↩ Оригінал
+        </button>
+      )}
+      {error && <p className={styles.error}>{error}</p>}
+    </div>
   );
 }

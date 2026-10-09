@@ -14,6 +14,7 @@ import {
 } from "./admin";
 import { type CoinDraft, describeCoinPhotos } from "./ai";
 import { getCoin, getCountries, getCountry } from "./data";
+import { enhanceCoinPhoto } from "./enhance";
 
 export type FormState = { error?: string; success?: string } | null;
 
@@ -141,6 +142,24 @@ export async function describeCoin(
 
 function photo(value: FormDataEntryValue | null) {
   return value instanceof File && value.size > 0 ? value : undefined;
+}
+
+export async function enhancePhoto(
+  id: string | null,
+  side: string,
+  formData: FormData,
+): Promise<{ image?: string; error?: string }> {
+  await requireSession();
+  if (side !== "avers" && side !== "revers") return { error: "Невідома сторона монети" };
+  try {
+    const saved = id ? await getCoin(id) : null;
+    const file = photo(formData.get("photo")) ?? (await download(saved?.[side]));
+    if (!file) return { error: "Спершу виберіть фото" };
+    const jpeg = await enhanceCoinPhoto(Buffer.from(await file.arrayBuffer()));
+    return { image: `data:image/jpeg;base64,${jpeg.toString("base64")}` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 async function download(url: string | undefined) {

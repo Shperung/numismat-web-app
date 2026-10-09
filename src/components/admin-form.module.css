@@ -67,6 +67,48 @@
   color: var(--muted);
 }
 
+.photoSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 160px;
+  text-align: center;
+}
+
+.photoSlot .link {
+  align-self: center;
+  font-size: 13px;
+}
+
+.busy {
+  opacity: 0.5;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.25;
+  }
+}
+
+.small {
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .fileInput {
   position: absolute;
   opacity: 0;

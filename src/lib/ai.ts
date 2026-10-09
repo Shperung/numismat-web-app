@@ -65,6 +65,30 @@ export async function describeCoinPhotos(avers: File, revers: File, countries: C
   return JSON.parse(result.response.text()) as CoinDraft;
 }
 
+export type CoinLocation = { box_2d: number[]; round: boolean };
+
+const locationSchema = Schema.object({
+  properties: {
+    box_2d: Schema.array({
+      items: Schema.integer(),
+      description: "Рамка монети [ymin, xmin, ymax, xmax] у масштабі 0–1000, щільно по зовнішньому краю (ободу)",
+    }),
+    round: Schema.boolean({ description: "Чи монета кругла (на фото може бути овалом через ракурс)" }),
+  },
+});
+
+export async function locateCoin(jpeg: Buffer) {
+  const model = getGenerativeModel(ai, {
+    model: "gemini-3.5-flash",
+    generationConfig: { responseMimeType: "application/json", responseSchema: locationSchema },
+  });
+  const result = await model.generateContent([
+    "На фото одна сторона монети. Знайди її межі та форму.",
+    { inlineData: { data: jpeg.toString("base64"), mimeType: "image/jpeg" } },
+  ]);
+  return JSON.parse(result.response.text()) as CoinLocation;
+}
+
 async function toPart(file: File) {
   const data = Buffer.from(await file.arrayBuffer()).toString("base64");
   return { inlineData: { data, mimeType: file.type || "image/jpeg" } };
