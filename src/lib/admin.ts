@@ -7,6 +7,10 @@ const DOCUMENTS = `https://firestore.googleapis.com/v1/projects/${process.env.FI
 
 export const SESSION_COOKIE = "admin_session";
 
+export async function hasSession() {
+  return (await cookies()).has(SESSION_COOKIE);
+}
+
 export async function requireSession() {
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!session) redirect("/admin/login");

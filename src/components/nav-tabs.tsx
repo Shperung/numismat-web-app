@@ -2,31 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 import styles from "./nav-tabs.module.css";
 
 const tabs = [
   { href: "/", title: "Головна" },
   { href: "/list", title: "Список" },
-  { href: "/info", title: "Інфо" },
 ];
 
-export function NavTabs() {
+export function NavTabs({ session }: { session: Promise<boolean> }) {
   return (
     <Suspense fallback={<Tabs />}>
-      <ActiveTabs />
+      <ActiveTabs session={session} />
     </Suspense>
   );
 }
 
-function ActiveTabs() {
-  return <Tabs pathname={usePathname()} />;
+function ActiveTabs({ session }: { session: Promise<boolean> }) {
+  const admin = use(session);
+  const authTab = admin ? { href: "/admin", title: "Адмінка" } : { href: "/admin/login", title: "Увійти" };
+  return <Tabs pathname={usePathname()} items={[...tabs, authTab]} />;
 }
 
-function Tabs({ pathname }: { pathname?: string }) {
+function Tabs({ pathname, items = tabs }: { pathname?: string; items?: typeof tabs }) {
   return (
     <nav className={styles.nav}>
-      {tabs.map((tab) => (
+      {items.map((tab) => (
         <Link
           key={tab.href}
           href={tab.href}

@@ -52,7 +52,7 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 
 ## План
 1. [x] Hello World на Next.js 16 + React Compiler, деплой на `next.tetiana-redko.com`
-2. [x] Layout + навігація: Головна / Список / Інфо (`layout.tsx`, `<Link>`), тема з Expo
+2. [x] Layout + навігація: Головна / Список / Увійти↔Адмінка (`layout.tsx`, `<Link>`), тема з Expo
 3. [x] Firestore у Server Components: `countries`, `coins` (async-компоненти, кешування)
 4. [x] Головна: випадкова країна → випадкова монета `CoinDetails` (`<Suspense>` + streaming)
 5. [x] Список: фільтр країни через `searchParams`, `CoinCard`, сторінка `coin/[id]`
@@ -83,7 +83,7 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
 Крок 6 — `PhotoZoom` (`src/components/photo-zoom.tsx`): мініатюра з бейджем → нативний `<dialog>` (`showModal()`) на весь екран,
 чорний фон, кнопка закриття, `Esc`. Тач: pinch 1–5× + pan (коли збільшено) + подвійний тап (скидання);
 мишка: просто велике зображення, клік будь-де закриває.
-Крок 10 — адмінка (посилання з «Інфо»): `/admin/login` (`LoginForm`, `useActionState(login)`) і `/admin`
+Крок 10 — адмінка (сторінку «Інфо» видалено; третій таб — «Увійти» → `/admin/login`, з сесією — «Адмінка» → `/admin`): `/admin/login` (`LoginForm`, `useActionState(login)`) і `/admin`
 (`requireSession()` у `<Suspense>` → `AdminForms` (`CoinForm` + `CountryForm`) + «Вийти»). `src/lib/admin.ts` — REST Firebase без SDK:
 `signInWithPassword` → `refreshToken` у httpOnly-cookie `admin_session` (30 днів); `addCoin` обмінює його на `idToken`
 (`securetoken`), паралельно вантажить 2 фото в Storage (`coins/{country}/{value}-{currency}-{year}-{ts}-avers.jpg`),
@@ -118,6 +118,10 @@ Gemini-заповнення: кнопка «Згенерувати опис…»
   runtime-даних (`searchParams`, `params`, `connection()`). Маршрути `/`, `/list`, `/coin/[id]` — `◐ Partial Prerender`:
   статична оболонка (nav + fallback) одразу, дані — streaming.
   `usePathname()` у layout на динамічному маршруті теж runtime → `NavTabs` = `<Suspense fallback={<Tabs />}>` + `ActiveTabs`.
+- Таб за сесією: cookie httpOnly → клієнт її не бачить. Layout передає НЕ awaited `hasSession()` (Promise) у
+  `<NavTabs session>`, клієнт розгортає `use(session)` всередині того самого `<Suspense>` → layout не блокується,
+  оболонка лишається статичною (fallback — лише Головна / Список). `cookies().set/delete` у Server Action
+  (login / logout) перерендерює і layout → таб змінюється одразу.
 - `useOptimistic` у фільтрі: контрольований `<select>` одразу показує нову країну, поки transition з навігацією
   ще триває (без нього значення відкотилося б до старого до приходу нової сторінки); `isPending` → `opacity`.
 - `notFound()` всередині `<Suspense>` після стріму оболонки → HTTP 200 + сторінка 404 з `noindex` (статус уже відправлено).

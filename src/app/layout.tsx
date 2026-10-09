@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { NavTabs } from "@/components/nav-tabs";
+import { hasSession } from "@/lib/admin";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="uk" suppressHydrationWarning>
       <body>
-        <NavTabs />
+        <NavTabs session={hasSession()} />
         <main>{children}</main>
       </body>
     </html>
