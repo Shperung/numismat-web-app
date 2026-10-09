@@ -44,6 +44,7 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
   + 443-блок вручну (див. «Пастки nginx / certbot» у `numismat-server/AGENTS.md`).
   У `location /` обов'язково `proxy_buffering off;` — інакше nginx буферизує стрім: немає streaming сторінок
   (PPR-оболонка і дані приходять разом) і спінера AI (відповідь action з Promise приходить одним шматком).
+  Для адмінки також `client_max_body_size 20m;` (фото в Server Action; за замовчуванням 1m → 413).
 - pm2 `tetiana-redko.com` (id 0) — НЕ ЧІПАТИ, команди лише за іменем.
 - Оновлення: `cd /var/www/numismat-web-app && git pull && npm ci && npm run build && pm2 restart numismat-web`.
 - Секрети: `.env.local` не в git → копіювати вручну: `scp .env.local root@116.203.220.233:/var/www/numismat-web-app/`
@@ -59,8 +60,8 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 7. [x] AI-кнопки: Server Actions + `useActionState`, список `/providers`, markdown
 8. [ ] Чат з контекстом: `useOptimistic`, `useFormStatus`
 9. [ ] React 19.2: `<Activity>`, `useEffectEvent`, `<ViewTransition>`
-10. [x] Адмінка: вхід (Firebase Auth email/пароль) + форма монети з фото аверсу/реверсу + форма країни (код)
- 10.1 [ ] Console: Email/Password, адмін-користувач, правила Firestore (`coins`, `countries`) / Storage (запис лише для `uid` адміна)
+10. [x] Адмінка: вхід (Firebase Auth email/пароль) + форма монети з фото аверсу/реверсу + форма країни + заповнення з фото через Gemini (перевірено локально)
+ 10.1 [x] Console: Email/Password, адмін-користувач, правила Firestore (`coins`, `countries`) / Storage (запис лише для `uid` адміна)
  10.2 [ ] nginx `client_max_body_size 20m;` + деплой, перевірка додавання на проді
  10.3 [ ] Пізніше: редагування / видалення, стиснення фото перед завантаженням
 
@@ -81,15 +82,20 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
 Помилка → кнопка «Спробувати ще» в панелі.
 Крок 6 — `PhotoZoom` (`src/components/photo-zoom.tsx`): мініатюра з бейджем → нативний `<dialog>` (`showModal()`) на весь екран,
 чорний фон, кнопка закриття, `Esc`. Тач: pinch 1–5× + pan (коли збільшено) + подвійний тап (скидання);
-мишка: просто велике зображення, клік будь-де закриває. Наступне — крок 8 (чат з контекстом).
+мишка: просто велике зображення, клік будь-де закриває.
 Крок 10 — адмінка (посилання з «Інфо»): `/admin/login` (`LoginForm`, `useActionState(login)`) і `/admin`
-(`requireSession()` у `<Suspense>` → `CoinForm` + «Вийти»). `src/lib/admin.ts` — REST Firebase без SDK:
+(`requireSession()` у `<Suspense>` → `AdminForms` (`CoinForm` + `CountryForm`) + «Вийти»). `src/lib/admin.ts` — REST Firebase без SDK:
 `signInWithPassword` → `refreshToken` у httpOnly-cookie `admin_session` (30 днів); `addCoin` обмінює його на `idToken`
 (`securetoken`), паралельно вантажить 2 фото в Storage (`coins/{country}/{value}-{currency}-{year}-{ts}-avers.jpg`),
 створює документ у `coins` (Firestore REST) → `updateTag("coins")` → `redirect('/coin/{id}')`.
 Права на запис перевіряють Security Rules (запит іде з `idToken` адміна), а не Next.
 `CountryForm` (на `/admin` під монетою): код → id документа (`?documentId=ua`, повтор → `ALREADY_EXISTS`),
 `name_ua`, `name_en`, `flag` → `updateTag("countries")` → нова країна одразу в `<select>` форми монети.
+Gemini-заповнення: кнопка «Згенерувати опис…» (активна, коли вибрано обидва фото) → action `describeCoin` →
+`describeCoinPhotos` (`gemini-3.5-flash`, 2 фото як `inlineData`, `responseSchema` → JSON `{ coin, newCountry? }`).
+Стан чернетки — у спільному `AdminForms` (props для `CoinForm` і `CountryForm`); якщо країни немає — підказка,
+форма країни заповнена, а `addCoin` відмовляє, поки країну не збережено.
+Адмінка працює локально (вхід, монета з фото, країна, Gemini). Наступне — крок 10.2 (nginx + деплой), далі крок 8.
 
 ## Журнал
 - `create-next-app` у пісочниці Cursor падає з EPERM (пише конфіг у `~/Library/Preferences`) → запускати поза пісочницею.
@@ -142,4 +148,10 @@ Server Action `askAi` (`src/lib/ai-actions.tsx`) + `useActionState`; markdown р
 - `<form action={fn}>` після завершення action скидає поля (і вибрані файли) навіть при помилці → `onSubmit` +
  `startTransition(() => action(formData))`. Превʼю фото — `URL.createObjectURL`.
  Очистити форму лише після успіху — `<form key={state?.success}>` (новий key → ремаунт із порожніми полями).
+- Підставити AI-чернетку в неконтрольовані поля: `defaultValue={draft.x}` + `<Fragment key={attempt}>` → ремаунт лише
+ текстових полів (вибрані фото поза Fragment лишаються). Кнопка Gemini — `type="button"` + `new FormData(e.currentTarget.form)`:
+ без валідації `required` і без скидання форми.
+- Structured output (`responseMimeType: "application/json"` + `Schema.object`) — `description` полів = інструкція моделі.
+ Без підказки «25 (cent), а не 0.25 (dollar)» Gemini віддавав `0.25 dollar` (у базі — `25 cent`). Відповідь ~8–12 с.
+ Перевірка поза Next: `npx tsx --env-file=.env.local script.mts` (файл `.mts`, бо top-level await).
 - `redirect()` всередині `<Suspense>` (як і `notFound()`): HTTP 200, редірект виконує клієнт (`NEXT_REDIRECT` у потоці).

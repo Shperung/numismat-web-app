@@ -4,6 +4,8 @@ import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { addDocument, getIdToken, requireSession, SESSION_COOKIE, signIn, uploadPhoto } from "./admin";
+import { type CoinDraft, describeCoinPhotos } from "./ai";
+import { getCountries, getCountry } from "./data";
 
 export type FormState = { error?: string; success?: string } | null;
 
@@ -48,6 +50,10 @@ export async function addCoin(_prev: FormState, formData: FormData): Promise<For
   }
   if (!(avers instanceof File) || !avers.size || !(revers instanceof File) || !revers.size) {
     return { error: "Додайте фото аверсу і реверсу" };
+  }
+
+  if (!(await getCountry(country))) {
+    return { error: `Спершу додайте країну «${country}»` };
   }
 
   let id: string;
@@ -97,6 +103,23 @@ export async function addCountry(_prev: FormState, formData: FormData): Promise<
 
   updateTag("countries");
   return { success: `Додано ${flag} ${name_ua}` };
+}
+
+export type DescribeState = { attempt: number; draft?: CoinDraft; error?: string };
+
+export async function describeCoin(prev: DescribeState, formData: FormData): Promise<DescribeState> {
+  await requireSession();
+  const attempt = prev.attempt + 1;
+  const avers = formData.get("avers");
+  const revers = formData.get("revers");
+  if (!(avers instanceof File) || !avers.size || !(revers instanceof File) || !revers.size) {
+    return { attempt, error: "Додайте фото аверсу і реверсу" };
+  }
+  try {
+    return { attempt, draft: await describeCoinPhotos(avers, revers, await getCountries()) };
+  } catch (e) {
+    return { attempt, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 function extension(file: File) {

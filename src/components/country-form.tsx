@@ -2,9 +2,10 @@
 
 import { startTransition, useActionState } from "react";
 import { addCountry } from "@/lib/admin-actions";
+import type { Country } from "@/types/country";
 import styles from "./admin-form.module.css";
 
-export function CountryForm() {
+export function CountryForm({ draft }: { draft?: Country }) {
   const [state, action, pending] = useActionState(addCountry, null);
 
   return (
@@ -27,21 +28,22 @@ export function CountryForm() {
             pattern="[a-zA-Z]{2,3}"
             maxLength={3}
             placeholder="ua"
+            defaultValue={draft?.id}
             className={styles.input}
           />
         </label>
         <label className={styles.field}>
           Прапор
-          <input name="flag" required placeholder="🇺🇦" className={styles.input} />
+          <input name="flag" required placeholder="🇺🇦" defaultValue={draft?.flag} className={styles.input} />
         </label>
       </div>
       <label className={styles.field}>
         Назва українською
-        <input name="name_ua" required placeholder="Україна" className={styles.input} />
+        <input name="name_ua" required placeholder="Україна" defaultValue={draft?.name_ua} className={styles.input} />
       </label>
       <label className={styles.field}>
         Назва англійською
-        <input name="name_en" required placeholder="Ukraine" className={styles.input} />
+        <input name="name_en" required placeholder="Ukraine" defaultValue={draft?.name_en} className={styles.input} />
       </label>
 
       {state?.error && <p className={styles.error}>{state.error}</p>}

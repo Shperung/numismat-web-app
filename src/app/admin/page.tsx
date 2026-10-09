@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import { CoinForm } from "@/components/coin-form";
-import { CountryForm } from "@/components/country-form";
+import { AdminForms } from "@/components/admin-forms";
 import styles from "@/components/admin-form.module.css";
 import { requireSession } from "@/lib/admin";
 import { logout } from "@/lib/admin-actions";
@@ -25,8 +24,7 @@ async function Admin() {
       <form action={logout} style={{ display: "flex" }}>
         <button className={styles.link}>Вийти</button>
       </form>
-      <CoinForm countries={countries} />
-      <CountryForm />
+      <AdminForms countries={countries} />
     </div>
   );
 }

@@ -91,6 +91,25 @@
   cursor: progress;
 }
 
+.secondary {
+  composes: button;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hint {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-size: 14px;
+}
+
 .link {
   align-self: flex-end;
   background: none;
