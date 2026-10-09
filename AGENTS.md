@@ -63,7 +63,8 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
 10. [x] Адмінка: вхід (Firebase Auth email/пароль) + форма монети з фото аверсу/реверсу + форма країни + заповнення з фото через Gemini (перевірено локально)
  10.1 [x] Console: Email/Password, адмін-користувач, правила Firestore (`coins`, `countries`) / Storage (запис лише для `uid` адміна)
  10.2 [ ] nginx `client_max_body_size 20m;` + деплой, перевірка додавання на проді
- 10.3 [ ] Пізніше: редагування / видалення, стиснення фото перед завантаженням
+ 10.3 [x] Редагування: `/admin/edit` (фільтр як у списку) → `/admin/edit/[id]` (та сама форма)
+ 10.4 [ ] Пізніше: видалення, стиснення фото перед завантаженням, прибирання старих фото зі Storage при заміні
 
 ## Поточний стан
 Кроки 3–5 — дані з Firestore і відображення як в Expo (без AI-секції):
@@ -95,6 +96,12 @@ Gemini-заповнення: кнопка «Згенерувати опис…»
 `describeCoinPhotos` (`gemini-3.5-flash`, 2 фото як `inlineData`, `responseSchema` → JSON `{ coin, newCountry? }`).
 Стан чернетки — у спільному `AdminForms` (props для `CoinForm` і `CountryForm`); якщо країни немає — підказка,
 форма країни заповнена, а `addCoin` відмовляє, поки країну не збережено.
+Редагування: `/admin` → «Редагувати монети» → `/admin/edit?country=` (спільний `CoinList` з `/list`, параметри
+`path` для `CountryPicker` і `coinHref` для `CoinCard`) → `/admin/edit/[id]` = `AdminForms coin={coin}`.
+Одна дія `saveCoin(id | null, …)`: без id — `addDocument`, з id — `updateDocument` (PATCH + `updateMask`);
+фото при редагуванні необовʼязкові (превʼю — поточні URL), нові вантажаться лише якщо вибрані.
+Gemini при редагуванні активний одразу: `describeCoin.bind(null, coinId)` — для невибраних фото сервер бере URL
+з `getCoin(id)` і сам їх завантажує (URL з клієнта не приймаємо → немає SSRF). Перегенерувати можна скільки завгодно.
 Адмінка працює локально (вхід, монета з фото, країна, Gemini). Наступне — крок 10.2 (nginx + деплой), далі крок 8.
 
 ## Журнал
@@ -158,4 +165,11 @@ Gemini-заповнення: кнопка «Згенерувати опис…»
 - Structured output (`responseMimeType: "application/json"` + `Schema.object`) — `description` полів = інструкція моделі.
  Без підказки «25 (cent), а не 0.25 (dollar)» Gemini віддавав `0.25 dollar` (у базі — `25 cent`). Відповідь ~8–12 с.
  Перевірка поза Next: `npx tsx --env-file=.env.local script.mts` (файл `.mts`, бо top-level await).
+- Firestore REST PATCH: `?updateMask.fieldPaths=…` — оновлюються лише поля з маски; поле в масці без значення в body
+ видаляється (так очищається `info`). `currentDocument.exists=true` — не створити документ випадково.
+ Старі `stringValue` у `year` / `value` після збереження стають числами.
+- Server Components можуть передавати один одному будь-що, але в Client Component (`CountryPicker`) — лише серіалізоване →
+ у спільний `CoinList` передаються рядки (`path`, `coinHref`), а не функції.
+- `useActionState(saveCoin.bind(null, id), null)` — bind у рендері; React Compiler сам мемоізує.
+- Після видалення сторінки (`info`) `tsc` падає на старих `.next/types` → спершу `npm run build`.
 - `redirect()` всередині `<Suspense>` (як і `notFound()`): HTTP 200, редірект виконує клієнт (`NEXT_REDIRECT` у потоці).

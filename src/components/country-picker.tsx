@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
 import type { Country } from "@/types/country";
 
-export function CountryPicker({ countries, selected }: { countries: Country[]; selected: string }) {
+type Props = { countries: Country[]; selected: string; path: string };
+
+export function CountryPicker({ countries, selected, path }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [country, setCountry] = useOptimistic(selected);
@@ -16,7 +18,7 @@ export function CountryPicker({ countries, selected }: { countries: Country[]; s
         const id = e.target.value;
         startTransition(() => {
           setCountry(id);
-          router.replace(`/list?country=${id}`);
+          router.replace(`${path}?country=${id}`);
         });
       }}
       className="card"

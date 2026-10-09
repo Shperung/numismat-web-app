@@ -5,9 +5,11 @@ import type { Coin } from "@/types/coin";
 import type { Country } from "@/types/country";
 import styles from "./coin-card.module.css";
 
-export function CoinCard({ coin, country }: { coin: Coin; country?: Country }) {
+type Props = { coin: Coin; country?: Country; href?: string };
+
+export function CoinCard({ coin, country, href = `/coin/${coin.id}` }: Props) {
   return (
-    <Link href={`/coin/${coin.id}`} className={`card ${styles.card}`}>
+    <Link href={href} className={`card ${styles.card}`}>
       <div className={styles.photos}>
         {coin.avers && <Image src={coin.avers} alt="Аверс" width={56} height={56} className={styles.photo} />}
         {coin.revers && (

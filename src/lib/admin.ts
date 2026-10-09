@@ -59,23 +59,35 @@ export async function uploadPhoto(idToken: string, path: string, file: File) {
   return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path)}?alt=media&token=${data.downloadTokens}`;
 }
 
-export async function addDocument(
-  idToken: string,
-  collection: string,
-  values: Record<string, string | number>,
-  id?: string,
-) {
-  const fields = Object.fromEntries(
+type Values = Record<string, string | number>;
+
+function toFields(values: Values) {
+  return Object.fromEntries(
     Object.entries(values).map(([key, v]) => [
       key,
       typeof v === "string" ? { stringValue: v } : Number.isInteger(v) ? { integerValue: v } : { doubleValue: v },
     ]),
   );
+}
+
+export async function addDocument(idToken: string, collection: string, values: Values, id?: string) {
   const query = id ? `?documentId=${encodeURIComponent(id)}` : "";
   const data = await request<{ name: string }>(`${DOCUMENTS}/${collection}${query}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields: toFields(values) }),
   });
   return data.name.split("/").pop()!;
+}
+
+export async function updateDocument(idToken: string, collection: string, id: string, values: Values, mask: string[]) {
+  const query = new URLSearchParams([
+    ...mask.map((field) => ["updateMask.fieldPaths", field]),
+    ["currentDocument.exists", "true"],
+  ]);
+  await request(`${DOCUMENTS}/${collection}/${encodeURIComponent(id)}?${query}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: toFields(values) }),
+  });
 }

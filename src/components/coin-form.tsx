@@ -1,22 +1,24 @@
 "use client";
 
 import { Fragment, startTransition, useActionState, useState } from "react";
-import { addCoin, type DescribeState } from "@/lib/admin-actions";
+import { type DescribeState, saveCoin } from "@/lib/admin-actions";
+import type { Coin } from "@/types/coin";
 import type { Country } from "@/types/country";
 import styles from "./admin-form.module.css";
 
 type Props = {
   countries: Country[];
+  editing?: Coin;
   newCountry?: Country;
   described: DescribeState;
   describe: (formData: FormData) => void;
   describing: boolean;
 };
 
-export function CoinForm({ countries, newCountry, described, describe, describing }: Props) {
-  const [state, action, pending] = useActionState(addCoin, null);
+export function CoinForm({ countries, editing, newCountry, described, describe, describing }: Props) {
+  const [state, action, pending] = useActionState(saveCoin.bind(null, editing?.id ?? null), null);
   const [photos, setPhotos] = useState<Record<string, boolean>>({});
-  const coin = described.draft?.coin;
+  const coin = described.draft?.coin ?? editing;
 
   return (
     <form
@@ -28,14 +30,15 @@ export function CoinForm({ countries, newCountry, described, describe, describin
       }}
       className={`card ${styles.form}`}
     >
-      <h1 className={styles.title}>Нова монета</h1>
+      <h1 className={styles.title}>{editing ? "Редагування монети" : "Нова монета"}</h1>
 
       <div className={styles.photos}>
-        {["avers", "revers"].map((name) => (
+        {(["avers", "revers"] as const).map((name) => (
           <PhotoInput
             key={name}
             name={name}
             label={name === "avers" ? "Аверс" : "Реверс"}
+            initial={editing?.[name]}
             onSelect={(selected) => setPhotos((p) => ({ ...p, [name]: selected }))}
           />
         ))}
@@ -43,7 +46,9 @@ export function CoinForm({ countries, newCountry, described, describe, describin
 
       <button
         type="button"
-        disabled={!photos.avers || !photos.revers || describing || pending}
+        disabled={
+          !(photos.avers || editing?.avers) || !(photos.revers || editing?.revers) || describing || pending
+        }
         className={styles.secondary}
         onClick={(e) => {
           const formData = new FormData(e.currentTarget.form!);
@@ -118,14 +123,16 @@ export function CoinForm({ countries, newCountry, described, describe, describin
 
       {state?.error && <p className={styles.error}>{state.error}</p>}
       <button disabled={pending || describing} className={styles.button}>
-        {pending ? "Збереження..." : "Додати монету"}
+        {pending ? "Збереження..." : editing ? "Зберегти зміни" : "Додати монету"}
       </button>
     </form>
   );
 }
 
-function PhotoInput({ name, label, onSelect }: { name: string; label: string; onSelect: (selected: boolean) => void }) {
-  const [preview, setPreview] = useState<string>();
+type PhotoInputProps = { name: string; label: string; initial?: string; onSelect: (selected: boolean) => void };
+
+function PhotoInput({ name, label, initial, onSelect }: PhotoInputProps) {
+  const [preview, setPreview] = useState(initial);
 
   return (
     <label className={styles.photo}>
@@ -140,12 +147,12 @@ function PhotoInput({ name, label, onSelect }: { name: string; label: string; on
         name={name}
         type="file"
         accept="image/*"
-        required
+        required={!initial}
         className={styles.fileInput}
         onChange={(e) => {
-          if (preview) URL.revokeObjectURL(preview);
+          if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
           const file = e.target.files?.[0];
-          setPreview(file && URL.createObjectURL(file));
+          setPreview(file ? URL.createObjectURL(file) : initial);
           onSelect(!!file);
         }}
       />

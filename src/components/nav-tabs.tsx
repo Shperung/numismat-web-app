@@ -31,7 +31,11 @@ function Tabs({ pathname, items = tabs }: { pathname?: string; items?: typeof ta
         <Link
           key={tab.href}
           href={tab.href}
-          className={pathname === tab.href ? styles.active : styles.tab}
+          className={
+            pathname === tab.href || (tab.href !== "/" && pathname?.startsWith(`${tab.href}/`))
+              ? styles.active
+              : styles.tab
+          }
         >
           {tab.title}
         </Link>

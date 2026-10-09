@@ -110,6 +110,13 @@
   font-size: 14px;
 }
 
+.back {
+  align-self: flex-start;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .link {
   align-self: flex-end;
   background: none;

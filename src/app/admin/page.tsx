@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { AdminForms } from "@/components/admin-forms";
 import styles from "@/components/admin-form.module.css";
@@ -21,9 +22,14 @@ async function Admin() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <form action={logout} style={{ display: "flex" }}>
-        <button className={styles.link}>Вийти</button>
-      </form>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Link href="/admin/edit" className={styles.back}>
+          Редагувати монети →
+        </Link>
+        <form action={logout}>
+          <button className={styles.link}>Вийти</button>
+        </form>
+      </div>
       <AdminForms countries={countries} />
     </div>
   );
