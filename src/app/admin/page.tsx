@@ -23,9 +23,14 @@ async function Admin() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/admin/edit" className={styles.back}>
-          Редагувати монети →
-        </Link>
+        <div style={{ display: "flex", gap: 16 }}>
+          <Link href="/admin/edit" className={styles.back}>
+            Редагувати монети →
+          </Link>
+          <Link href="/admin/countries" className={styles.back}>
+            Країни →
+          </Link>
+        </div>
         <form action={logout}>
           <button className={styles.link}>Вийти</button>
         </form>

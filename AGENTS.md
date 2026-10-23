@@ -47,7 +47,9 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
   + 443-блок вручну (див. «Пастки nginx / certbot» у `numismat-server/AGENTS.md`).
   У `location /` обов'язково `proxy_buffering off;` — інакше nginx буферизує стрім: немає streaming сторінок
   (PPR-оболонка і дані приходять разом) і спінера AI (відповідь action з Promise приходить одним шматком).
-  Для адмінки також `client_max_body_size 20m;` (фото в Server Action; за замовчуванням 1m → 413).
+  Для адмінки також `client_max_body_size 20m;` (фото в Server Action; за замовчуванням 1m → 413) — саме в блоці
+ `listen 443`, не в `listen 80` (той лише редіректить). Симптом: `error.tsx` з «An unexpected response was received
+ from the server» (nginx віддає 413 як `text/html`). Перевірка: `curl -X POST -H "Next-Action: x" --data-binary @2mb.bin` → не 413.
 - pm2 `tetiana-redko.com` (id 0) — НЕ ЧІПАТИ, команди лише за іменем.
 - Оновлення: `cd /var/www/numismat-web-app && git pull && npm ci && npm run build && pm2 restart numismat-web`.
 - Секрети: `.env.local` не в git → копіювати вручну: `scp .env.local root@116.203.220.233:/var/www/numismat-web-app/`
@@ -69,6 +71,7 @@ Expo-додатку (`/Users/viktor_kravchuk/traning/numismat-expo-app/AGENTS.md
  10.3 [x] Редагування: `/admin/edit` (фільтр як у списку) → `/admin/edit/[id]` (та сама форма)
  10.4 [x] «✨ Покращити» біля кожного фото: Gemini знаходить монету, `sharp` прибирає фон (білий) і центрує в 1:1
  10.5 [ ] Пізніше: видалення, прибирання старих фото зі Storage при заміні
+ 10.6 [x] Редагування країн: `/admin/countries` → `/admin/countries/[id]` (код, назви, прапор) — збірка ок, на даних не перевірено
 
 ## Поточний стан
 Кроки 3–5 — дані з Firestore і відображення як в Expo (без AI-секції):
@@ -114,6 +117,10 @@ Gemini при редагуванні активний одразу: `describeCoi
 у рамку (овал від ракурсу лишається овалом) + білий фон → `contain` у 940×940 → поля до 1024×1024 JPEG.
 Клієнт: data URL → `File` → `input.files = DataTransfer.files` (FormData і превʼю беруть покращене), «↩ Оригінал».
 При редагуванні без нового файлу сервер бере збережене фото за `coinId` (як `describeCoin`).
+Країни: `/admin` → «Країни» → `/admin/countries` (список) → `/admin/countries/[id]` = `CountryForm editing={country}`.
+Одна дія `saveCountry(id | null, …)`: без id — `addDocument`; той самий код — `updateDocument`; новий код —
+`renameCountry` (Firestore REST `documents:commit`, атомарно: створити `countries/{new}` з `exists: false`,
+`country` у всіх монетах, видалити старий) → `updateTag("countries")` (+ `"coins"`) → `redirect('/admin/countries')`.
 Адмінка задеплоєна на прод (Node 24), вхід працює. Наступне — крок 8 (чат з контекстом) або 10.5.
 
 ## Журнал
@@ -203,4 +210,7 @@ Gemini при редагуванні активний одразу: `describeCoi
 - Логи прод: `Server Reference ID … Received "x"` — сканери з фейковим `Next-Action`, ігнорувати.
 - Сервер Next без EXIF-нормалізації: Gemini і `sharp.extract` мають бачити однакові пікселі → спершу `.rotate()`
  (EXIF) + resize до 2048, і цей самий буфер — і в Gemini, і в обрізку.
+- Код країни = id документа, а id у Firestore незмінний → перейменування = новий документ + переписати посилання
+ + видалити старий. Через `documents:commit` (до 500 записів) — або все, або нічого: без напівперейменованої країни.
+ Монети для перейменування — `getCoinIdsByCountryFresh` без `'use cache'` (кеш міг би пропустити щойно додані).
 - `redirect()` всередині `<Suspense>` (як і `notFound()`): HTTP 200, редірект виконує клієнт (`NEXT_REDIRECT` у потоці).

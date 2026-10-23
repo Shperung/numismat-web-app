@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 
 const KEY = process.env.FIREBASE_API_KEY;
 const BUCKET = process.env.FIREBASE_STORAGE_BUCKET;
-const DOCUMENTS = `https://firestore.googleapis.com/v1/projects/${process.env.FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+const DATABASE = `projects/${process.env.FIREBASE_PROJECT_ID}/databases/(default)`;
+const DOCUMENTS = `https://firestore.googleapis.com/v1/${DATABASE}/documents`;
 
 export const SESSION_COOKIE = "admin_session";
 
@@ -89,5 +90,25 @@ export async function updateDocument(idToken: string, collection: string, id: st
     method: "PATCH",
     headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ fields: toFields(values) }),
+  });
+}
+
+// id документа незмінний → нова країна + переписати `country` у монетах + видалити стару, атомарно
+export async function renameCountry(idToken: string, from: string, to: string, values: Values, coinIds: string[]) {
+  const name = (collection: string, id: string) => `${DATABASE}/documents/${collection}/${id}`;
+  await request(`${DOCUMENTS}:commit`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      writes: [
+        { update: { name: name("countries", to), fields: toFields(values) }, currentDocument: { exists: false } },
+        ...coinIds.map((id) => ({
+          update: { name: name("coins", id), fields: toFields({ country: to }) },
+          updateMask: { fieldPaths: ["country"] },
+          currentDocument: { exists: true },
+        })),
+        { delete: name("countries", from), currentDocument: { exists: true } },
+      ],
+    }),
   });
 }

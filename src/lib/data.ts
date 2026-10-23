@@ -24,6 +24,12 @@ export async function getCoinsByCountry(country: string) {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Coin);
 }
 
+// без кешу: для перейменування країни потрібні всі монети, зокрема щойно додані
+export async function getCoinIdsByCountryFresh(country: string) {
+  const snapshot = await getDocs(query(collection(db, "coins"), where("country", "==", country)));
+  return snapshot.docs.map((d) => d.id);
+}
+
 export async function getCoin(id: string) {
   "use cache";
   cacheLife("minutes");

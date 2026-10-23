@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import {
   addDocument,
   getIdToken,
+  renameCountry,
   requireSession,
   SESSION_COOKIE,
   signIn,
@@ -13,7 +14,7 @@ import {
   uploadPhoto,
 } from "./admin";
 import { type CoinDraft, describeCoinPhotos } from "./ai";
-import { getCoin, getCountries, getCountry } from "./data";
+import { getCoin, getCoinIdsByCountryFresh, getCountries, getCountry } from "./data";
 import { enhanceCoinPhoto } from "./enhance";
 
 export type FormState = { error?: string; success?: string } | null;
@@ -95,7 +96,7 @@ export async function saveCoin(id: string | null, _prev: FormState, formData: Fo
   redirect(`/coin/${id}`);
 }
 
-export async function addCountry(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function saveCountry(editId: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
   const session = await requireSession();
   const text = (key: string) => String(formData.get(key) ?? "").trim();
   const id = text("id").toLowerCase();
@@ -107,15 +108,25 @@ export async function addCountry(_prev: FormState, formData: FormData): Promise<
     return { error: "Заповніть код (2–3 латинські літери), назви та прапор" };
   }
 
+  const values = { name_ua, name_en, flag };
   try {
-    await addDocument(await getIdToken(session), "countries", { name_ua, name_en, flag }, id);
+    const idToken = await getIdToken(session);
+    if (!editId) {
+      await addDocument(idToken, "countries", values, id);
+    } else if (editId === id) {
+      await updateDocument(idToken, "countries", id, values, Object.keys(values));
+    } else {
+      await renameCountry(idToken, editId, id, values, await getCoinIdsByCountryFresh(editId));
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    return { error: message.startsWith("Document already exists") ? `Країна «${id}» вже існує` : message };
+    return { error: message.includes("already exists") ? `Країна «${id}» вже існує` : message };
   }
 
   updateTag("countries");
-  return { success: `Додано ${flag} ${name_ua}` };
+  if (!editId) return { success: `Додано ${flag} ${name_ua}` };
+  if (editId !== id) updateTag("coins");
+  redirect("/admin/countries");
 }
 
 export type DescribeState = { attempt: number; draft?: CoinDraft; error?: string };
