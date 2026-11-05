@@ -213,4 +213,8 @@ Gemini при редагуванні активний одразу: `describeCoi
 - Код країни = id документа, а id у Firestore незмінний → перейменування = новий документ + переписати посилання
  + видалити старий. Через `documents:commit` (до 500 записів) — або все, або нічого: без напівперейменованої країни.
  Монети для перейменування — `getCoinIdsByCountryFresh` без `'use cache'` (кеш міг би пропустити щойно додані).
+- З 2.11.2026 App Check для AI Logic обов'язковий → 401 «Firebase App Check token is invalid». На сервері reCAPTCHA
+ немає → `firebase-admin` `getAppCheck().createToken(appId)` (сервісний акаунт: `FIREBASE_CLIENT_EMAIL`,
+ `FIREBASE_PRIVATE_KEY` у `.env.local`) → `initializeServerApp(config, { appCheckToken })` → `getAI`. Токен живе 1 год →
+ кеш на 50 хв (`getAi()`). `cert()` ініціалізується ліниво — інакше збірка без ключа падає на «collect page data».
 - `redirect()` всередині `<Suspense>` (як і `notFound()`): HTTP 200, редірект виконує клієнт (`NEXT_REDIRECT` у потоці).
